@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Echoes of Aether — Mario Style</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;user-select:none;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:#5c94fc;font-family:'Inter',system-ui,sans-serif}
+body{touch-action:none}
+#game{position:fixed;inset:0;width:100%;height:100%;display:block}
+
+#lobby{
+  position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(180deg,#5c94fc 0%,#5c94fc 55%,#00a800 55%,#00a800 100%);
+}
+.menu{
+  width:min(92%,400px);padding:36px 28px;border-radius:0;
+  background:#f8d878;border:6px solid #000;
+  box-shadow:8px 8px 0 #000;text-align:center;color:#000;
+}
+.logo{
+  font-family:'Press Start 2P',monospace;font-size:22px;line-height:1.4;
+  color:#e52521;text-shadow:3px 3px 0 #000;
+}
+.subtitle{
+  font-family:'Press Start 2P',monospace;font-size:10px;color:#000;
+  margin:12px 0 28px;letter-spacing:1px;
+}
+.menu button{
+  width:100%;padding:14px;margin:8px 0;border:4px solid #000;
+  border-radius:0;font-family:'Press Start 2P',monospace;font-size:11px;
+  background:#fc9838;color:#000;cursor:pointer;box-shadow:4px 4px 0 #000;
+  transition:transform .1s;
+}
+.menu button:active{transform:translate(2px,2px);box-shadow:2px 2px 0 #000}
+#newGame{background:#fc9838}
+#continueGame{background:#88d8ff}
+.tagline{margin-top:22px;font-family:'Press Start 2P',monospace;font-size:7px;color:#333}
+
+#hud{
+  position:fixed;top:12px;left:12px;z-index:10;color:#fff;display:none;pointer-events:none;
+  font-family:'Press Start 2P',monospace;font-size:10px;
+  text-shadow:2px 2px 0 #000;
+}
+.hpbox{width:200px;height:14px;background:#000;border:3px solid #fff;overflow:hidden}
+#hp{height:100%;width:100%;background:#e52521;transition:width .2s}
+.xpbox{width:200px;height:6px;background:#000;border:2px solid #fff;margin-top:6px;overflow:hidden}
+#xpBar{height:100%;width:0;background:#fc9838;transition:width .25s}
+.hudrow{display:flex;gap:16px;margin-top:8px}
+
+#message{
+  position:fixed;top:80px;left:50%;transform:translateX(-50%);
+  z-index:20;color:#000;background:#f8d878;padding:10px 18px;
+  border:4px solid #000;font-family:'Press Start 2P',monospace;font-size:9px;
+  opacity:0;pointer-events:none;transition:.25s;max-width:90%;text-align:center;
+  box-shadow:4px 4px 0 #000;
+}
+#message.show{opacity:1}
+
+#controls{position:fixed;inset:0;z-index:8;display:none;pointer-events:none}
+#joystick{
+  position:absolute;left:20px;bottom:20px;width:120px;height:120px;
+  border-radius:50%;background:#0004;border:4px solid #fff8;pointer-events:auto;
+}
+#stick{position:absolute;width:52px;height:52px;left:30px;top:30px;border-radius:50%;background:#fff;border:3px solid #000}
+.actions{position:absolute;right:16px;bottom:16px;display:flex;gap:10px;align-items:flex-end;pointer-events:auto}
+.action{
+  width:64px;height:64px;border:4px solid #000;border-radius:50%;
+  color:#000;background:#fc9838;font-family:'Press Start 2P',monospace;font-size:9px;
+  display:flex;align-items:center;justify-content:center;box-shadow:3px 3px 0 #000;
+}
+.action.big{width:80px;height:80px;font-size:22px;background:#e52521;color:#fff}
+
+#pause,#inventory{
+  position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;background:#0009;
+}
+.box{
+  width:min(90%,380px);padding:24px;border:6px solid #000;border-radius:0;
+  background:#f8d878;color:#000;text-align:center;box-shadow:8px 8px 0 #000;
+}
+.box h2{font-family:'Press Start 2P',monospace;font-size:14px;margin-bottom:12px}
+.box button{
+  width:100%;padding:12px;margin-top:8px;border:4px solid #000;border-radius:0;
+  background:#fc9838;color:#000;font-family:'Press Start 2P',monospace;font-size:10px;cursor:pointer;
+  box-shadow:3px 3px 0 #000;
+}
+.item{background:#fff;padding:12px;margin:6px 0;border:3px solid #000;display:flex;justify-content:space-between;font-family:'Press Start 2P',monospace;font-size:8px}
+.close{float:right;background:#e52521!important;color:#fff!important;width:auto!important;padding:6px 10px!important;margin:0!important;font-size:10px!important}
+
+@media(min-width:900px){
+  #joystick,.actions{display:none!important}
+  #controls::after{
+    content:"WASD • SPACE Attack • SHIFT Dash • E Interact • I Inventory • ESC Pause";
+    position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
+    color:#fff;font-family:'Press Start 2P',monospace;font-size:8px;
+    background:#0008;padding:8px 16px;border:3px solid #fff;
+  }
+}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="lobby">
+  <div class="menu">
+    <div class="logo">ECHOES</div>
+    <div class="subtitle">OF AETHER</div>
+    <button id="newGame">NEW GAME</button>
+    <button id="continueGame">CONTINUE</button>
+    <p class="tagline">MARIO STYLE • MULTI BIOME</p>
+  </div>
+</div>
+
+<div id="hud">
+  <div class="hpbox"><div id="hp"></div></div>
+  <div class="xpbox"><div id="xpBar"></div></div>
+  <div class="hudrow">
+    <div>❤️ <span id="hpText">100/100</span></div>
+    <div>⭐ LV <span id="level">1</span></div>
+    <div>🪙 <span id="coins">0</span></div>
+  </div>
+</div>
+
+<div id="message"></div>
+
+<div id="controls">
+  <div id="joystick"><div id="stick"></div></div>
+  <div class="actions">
+    <button class="action" id="dash">DASH</button>
+    <button class="action big" id="attack">⚔</button>
+    <button class="action" id="interact">E</button>
+  </div>
+</div>
+
+<div id="inventory">
+  <div class="box">
+    <button class="close" id="closeInv">✕</button>
+    <h2>INVENTORY</h2>
+    <div class="item"><span>POTION</span><span>× <span id="potion">3</span></span></div>
+    <div class="item"><span>COINS</span><span>× <span id="invCoins">0</span></span></div>
+    <div class="item"><span>AETHER BLADE</span><span>EQ</span></div>
+  </div>
+</div>
+
+<div id="pause">
+  <div class="box">
+    <h2>PAUSED</h2>
+    <button id="resume">RESUME</button>
+    <button id="save">SAVE</button>
+    <button id="backLobby">MENU</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+const canvas=document.getElementById("game"),ctx=canvas.getContext("2d");
+let W=innerWidth,H=innerHeight,DPR=1;
+function resize(){DPR=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;canvas.width=W*DPR;canvas.height=H*DPR;canvas.style.width=W+"px";canvas.style.height=H+"px";ctx.setTransform(DPR,0,0,DPR,0,0)}
+addEventListener("resize",resize);resize();
+
+let audio=null,master=null;
+function initAudio(){if(audio)return;const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;audio=new AC();master=audio.createGain();master.gain.value=.12;master.connect(audio.destination);if(audio.state==="suspended")audio.resume();ambience()}
+function tone(f,d,t="sine",v=.15){if(!audio)return;const o=audio.createOscillator(),g=audio.createGain();o.type=t;o.frequency.value=f;g.gain.setValueAtTime(v,audio.currentTime);g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+d);o.connect(g);g.connect(master);o.start();o.stop(audio.currentTime+d)}
+function swordSound(){tone(500,.06,"square",.14);setTimeout(()=>tone(800,.06,"square",.1),30)}
+function hitSound(){tone(120,.08,"square",.2);tone(80,.1,"square",.12)}
+function dashSound(){tone(300,.1,"square",.1);setTimeout(()=>tone(600,.08,"square",.08),40)}
+function levelSound(){tone(400,.1,"square",.1);setTimeout(()=>tone(600,.1,"square",.1),80);setTimeout(()=>tone(800,.15,"square",.1),160)}
+function deathSound(){tone(150,.25,"square",.12);setTimeout(()=>tone(100,.3,"square",.1),100)}
+function ambience(){if(!audio)return;const o=audio.createOscillator(),g=audio.createGain();o.type="sine";o.frequency.value=60;g.gain.value=.01;o.connect(g);g.connect(master);o.start()}
+
+const WORLD={width:5600,height:4400};
+let camera={x:0,y:0},shake=0,time=0;
+let player={x:980,y:1500,radius:22,speed:250,hp:100,maxHp:100,level:1,xp:0,coins:0,attackCooldown:0,dashCooldown:0,facingX:1,facingY:0,potions:3,slashTimer:0};
+let enemies=[],trees=[],rocks=[],particles=[],floatingTexts=[],trails=[],deco=[];
+const npc={x:900,y:1380,name:"ELDER"};
+let running=false,paused=false,keys={};
+
+/* ===== BIOME ===== */
+function getBiome(x,y){
+  if(x>4000&&y>3000) return "dungeon";
+  if(y<1000) return "snow";
+  if(x>3600&&y<2400) return "desert";
+  if(x>2900&&x<3800&&y>1700&&y<2800) return "crystal";
+  if(x<1500&&y>2800) return "swamp";
+  if(x>1700&&x<3200&&y>1000&&y<2200) return "forest";
+  return "grass";
+}
+
+function createWorld(){
+  trees=[];rocks=[];enemies=[];deco=[];
+  for(let i=0;i<300;i++){
+    let x=60+Math.random()*(WORLD.width-120);
+    let y=60+Math.random()*(WORLD.height-120);
+    if(Math.abs(x-980)<600&&Math.abs(y-1500)<500) continue;
+    if(x>4000&&y>3000) continue;
+    const b=getBiome(x,y);
+    if(b==="desert"){
+      if(Math.random()<0.55) deco.push({type:"cactus",x,y,h:28+Math.random()*45});
+      else rocks.push({x,y,size:8+Math.random()*18,biome:b});
+    } else if(b==="snow"){
+      trees.push({x,y,size:17+Math.random()*24,biome:b,sway:Math.random()*6.28});
+    } else if(b==="swamp"){
+      if(Math.random()<0.5) deco.push({type:"mushroom",x,y,s:12+Math.random()*16});
+      else trees.push({x,y,size:13+Math.random()*18,biome:b,sway:Math.random()*6.28});
+    } else if(b==="crystal"){
+      deco.push({type:"crystal",x,y,s:14+Math.random()*22,c:Math.random()});
+    } else {
+      trees.push({x,y,size:15+Math.random()*26,biome:b,sway:Math.random()*6.28});
+    }
+  }
+  for(let i=0;i<100;i++){
+    let x=60+Math.random()*(WORLD.width-120);
+    let y=60+Math.random()*(WORLD.height-120);
+    if(x>4000&&y>3000) continue;
+    rocks.push({x,y,size:7+Math.random()*17,biome:getBiome(x,y)});
+  }
+
+  const types=["Slime","Goblin","Wolf","Skeleton"];
+  for(let i=0;i<55;i++){
+    let x,y;
+    if(i<14){x=300+Math.random()*2200;y=300+Math.random()*2000}
+    else if(i<28){x=1900+Math.random()*1700;y=1100+Math.random()*1700}
+    else if(i<42){x=3400+Math.random()*1600;y=300+Math.random()*2200}
+    else {x=4100+Math.random()*1200;y=3100+Math.random()*1100}
+    enemies.push({
+      x,y,radius:17+Math.random()*5,
+      hp:52+Math.random()*28,maxHp:65,
+      speed:40+Math.random()*48,
+      type:types[Math.floor(Math.random()*types.length)],
+      attackTimer:0,hitFlash:0,boss:false
+    });
+  }
+
+  // 7 Bosses
+  enemies.push({x:1500,y:2200,radius:48,hp:400,maxHp:400,speed:30,type:"Ironwood",boss:true,attackTimer:0,hitFlash:0});
+  enemies.push({x:2500,y:1600,radius:52,hp:480,maxHp:480,speed:26,type:"Treant",boss:true,attackTimer:0,hitFlash:0});
+  enemies.push({x:800,y:3600,radius:48,hp:450,maxHp:450,speed:32,type:"Hydra",boss:true,attackTimer:0,hitFlash:0});
+  enemies.push({x:4800,y:1400,radius:50,hp:520,maxHp:520,speed:28,type:"SandKing",boss:true,attackTimer:0,hitFlash:0});
+  enemies.push({x:2800,y:500,radius:55,hp:550,maxHp:550,speed:24,type:"Frost",boss:true,attackTimer:0,hitFlash:0});
+  enemies.push({x:3400,y:2300,radius:46,hp:480,maxHp:480,speed:27,type:"Crystal",boss:true,attackTimer:0,hitFlash:0});
+  enemies.push({x:4800,y:3900,radius:65,hp:1100,maxHp:1100,speed:22,type:"AetherLord",boss:true,attackTimer:0,hitFlash:0});
+}
+createWorld();
+
+/* INPUT */
+addEventListener("keydown",e=>{
+  keys[e.key.toLowerCase()]=true;initAudio();
+  if(e.key===" "){e.preventDefault();attack()}
+  if(e.key.toLowerCase()==="e")interact();
+  if(e.key.toLowerCase()==="i")toggleInventory();
+  if(e.key==="Escape")togglePause();
+  if(e.key==="Shift")dash();
+});
+addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
+
+const joystick=document.getElementById("joystick"),stick=document.getElementById("stick");
+let joyX=0,joyY=0,joyActive=false;
+function joystickMove(x,y){
+  const r=joystick.getBoundingClientRect();
+  let dx=x-(r.left+r.width/2),dy=y-(r.top+r.height/2);
+  const max=44,d=Math.hypot(dx,dy);
+  if(d>max){dx=dx/d*max;dy=dy/d*max}
+  joyX=dx/max;joyY=dy/max;stick.style.transform=`translate(${dx}px,${dy}px)`;
+}
+function joystickEnd(){joyActive=false;joyX=0;joyY=0;stick.style.transform="translate(0,0)"}
+joystick.addEventListener("pointerdown",e=>{initAudio();joyActive=true;joystick.setPointerCapture(e.pointerId);joystickMove(e.clientX,e.clientY)});
+joystick.addEventListener("pointermove",e=>{if(joyActive)joystickMove(e.clientX,e.clientY)});
+joystick.addEventListener("pointerup",joystickEnd);joystick.addEventListener("pointercancel",joystickEnd);
+
+document.getElementById("attack").addEventListener("pointerdown",()=>{initAudio();attack()});
+document.getElementById("dash").addEventListener("pointerdown",()=>{initAudio();dash()});
+document.getElementById("interact").addEventListener("pointerdown",()=>{initAudio();interact()});
+document.getElementById("newGame").onclick=()=>{initAudio();newGame()};
+document.getElementById("continueGame").onclick=()=>{initAudio();continueGame()};
+document.getElementById("resume").onclick=()=>{paused=false;document.getElementById("pause").style.display="none"};
+document.getElementById("save").onclick=saveGame;
+document.getElementById("backLobby").onclick=()=>{running=false;paused=false;document.getElementById("pause").style.display="none";document.getElementById("hud").style.display="none";document.getElementById("controls").style.display="none";document.getElementById("lobby").style.display="flex"};
+document.getElementById("closeInv").onclick=()=>document.getElementById("inventory").style.display="none";
+
+function newGame(){
+  localStorage.removeItem("aetherSave");
+  player={x:980,y:1550,radius:22,speed:250,hp:100,maxHp:100,level:1,xp:0,coins:0,attackCooldown:0,dashCooldown:0,facingX:1,facingY:0,potions:3,slashTimer:0};
+  createWorld();startGame();showMessage("⚔ Mario Style Adventure!");
+}
+function continueGame(){
+  const data=localStorage.getItem("aetherSave");
+  if(!data){newGame();return}
+  try{Object.assign(player,JSON.parse(data));player.slashTimer=0;createWorld();startGame();showMessage("💾 Save loaded!")}
+  catch{newGame()}
+}
+function startGame(){running=true;paused=false;document.getElementById("lobby").style.display="none";document.getElementById("hud").style.display="block";document.getElementById("controls").style.display="block";updateHUD()}
+function saveGame(){localStorage.setItem("aetherSave",JSON.stringify(player));tone(700,.12);showMessage("💾 Saved!");setTimeout(()=>{paused=false;document.getElementById("pause").style.display="none"},700)}
+
+function updatePlayer(dt){
+  if(!running||paused)return;
+  let mx=0,my=0;
+  if(keys.w||keys.arrowup)my--;if(keys.s||keys.arrowdown)my++;if(keys.a||keys.arrowleft)mx--;if(keys.d||keys.arrowright)mx++;
+  if(Math.abs(joyX)>.05||Math.abs(joyY)>.05){mx=joyX;my=joyY}
+  const len=Math.hypot(mx,my);
+  if(len){mx/=len;my/=len;player.facingX=mx;player.facingY=my;player.x+=mx*player.speed*dt;player.y+=my*player.speed*dt;
+    if(Math.random()<.3)particles.push({x:player.x+(Math.random()-.5)*12,y:player.y+20,vx:(Math.random()-.5)*20,vy:-8-Math.random()*12,life:.25,maxLife:.3,color:"#8b8",size:2+Math.random()*2})}
+  player.x=Math.max(40,Math.min(WORLD.width-40,player.x));player.y=Math.max(40,Math.min(WORLD.height-40,player.y));
+  player.attackCooldown=Math.max(0,player.attackCooldown-dt);player.dashCooldown=Math.max(0,player.dashCooldown-dt);player.slashTimer=Math.max(0,player.slashTimer-dt);
+}
+
+function updateEnemies(dt){
+  if(!running||paused)return;
+  for(const e of enemies){
+    if(e.hp<=0)continue;e.hitFlash=Math.max(0,e.hitFlash-dt);
+    const dx=player.x-e.x,dy=player.y-e.y,dist=Math.hypot(dx,dy);
+    const aggro=e.boss?900:700;
+    if(dist<aggro&&dist>e.radius+38){e.x+=dx/dist*e.speed*dt;e.y+=dy/dist*e.speed*dt}
+    if(dist<e.radius+45){
+      e.attackTimer-=dt;
+      if(e.attackTimer<=0){
+        const dmg=e.boss?(e.type==="AetherLord"?24:15):8;
+        player.hp-=dmg;e.attackTimer=e.boss?.65:1;
+        hitSound();createParticles(player.x,player.y,"#f55",14);
+        addFloatingText(player.x,player.y-36,`-${dmg}`,"#f66");shake=.25;
+        if(player.hp<=0){deathSound();player.hp=player.maxHp;player.x=980;player.y=1550;showMessage("💀 You died! Back to village.")}
+      }
+    }
+  }
+}
+
+function attack(){
+  if(!running||paused||player.attackCooldown>0)return;
+  player.attackCooldown=.26;player.slashTimer=.2;swordSound();
+  for(const e of enemies){
+    if(e.hp<=0)continue;
+    if(Math.hypot(e.x-player.x,e.y-player.y)<120){
+      const dmg=30+Math.floor(Math.random()*14);e.hp-=dmg;e.hitFlash=.22;
+      hitSound();createParticles(e.x,e.y,"#fe3",22);addFloatingText(e.x,e.y-e.radius-16,`-${dmg}`,"#fe3");
+      if(e.hp<=0){
+        let reward=25+Math.floor(Math.random()*20),xpGain=25+Math.floor(Math.random()*15);
+        if(e.boss){if(e.type==="AetherLord"){reward=2500;xpGain=400}else{reward=700;xpGain=130};showMessage("👑 "+e.type+" DEFEATED!")}
+        else showMessage("+"+reward+" 🪙");
+        player.coins+=reward;gainXP(xpGain);createParticles(e.x,e.y,"#c4b5fd",45);shake=e.boss?.6:.18;
+      }
+    }
+  }
+  createParticles(player.x+player.facingX*55,player.y+player.facingY*55,"#fff",15);
+}
+function dash(){
+  if(!running||paused||player.dashCooldown>0)return;
+  player.dashCooldown=.85;dashSound();
+  for(let i=0;i<8;i++)trails.push({x:player.x-player.facingX*i*16,y:player.y-player.facingY*i*16,life:.32-i*.035});
+  player.x+=player.facingX*215;player.y+=player.facingY*215;
+  player.x=Math.max(40,Math.min(WORLD.width-40,player.x));player.y=Math.max(40,Math.min(WORLD.height-40,player.y));
+  createParticles(player.x,player.y,"#4bf",28);
+}
+function gainXP(a){player.xp+=a;while(player.xp>=100){player.xp-=100;player.level++;player.maxHp+=16;player.hp=player.maxHp;levelSound();createParticles(player.x,player.y,"#c4b5fd",42);showMessage("✨ LEVEL UP! Lv "+player.level)}}
+function interact(){
+  if(!running||paused)return;
+  if(Math.hypot(player.x-npc.x,player.y-npc.y)<140){tone(660,.1);showMessage("🧙 ELDER: 7 BIOMES, 7 BOSSES. AETHER LORD IS THE STRONGEST!")}
+  else showMessage("🌎 GRASS • FOREST • SWAMP • DESERT • SNOW • CRYSTAL • DUNGEON");
+}
+
+function createParticles(x,y,color,count){for(let i=0;i<count;i++)particles.push({x,y,vx:(Math.random()-.5)*260,vy:(Math.random()-.5)*260,life:.4+Math.random()*.55,maxLife:.85,color,size:3+Math.random()*4})}
+function addFloatingText(x,y,text,color){floatingTexts.push({x,y,text,color,life:1.25,vy:-52})}
+function updateParticles(dt){
+  for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.93;p.vy*=.93;p.life-=dt;if(p.life<=0)particles.splice(i,1)}
+  for(let i=floatingTexts.length-1;i>=0;i--){const f=floatingTexts[i];f.y+=f.vy*dt;f.life-=dt;if(f.life<=0)floatingTexts.splice(i,1)}
+  for(let i=trails.length-1;i>=0;i--){trails[i].life-=dt;if(trails[i].life<=0)trails.splice(i,1)}
+}
+function updateCamera(dt){
+  const tx=player.x-W/2,ty=player.y-H/2;
+  camera.x+=(tx-camera.x)*Math.min(1,7.5*dt);camera.y+=(ty-camera.y)*Math.min(1,7.5*dt);
+  camera.x=Math.max(0,Math.min(camera.x,WORLD.width-W));camera.y=Math.max(0,Math.min(camera.y,WORLD.height-H));
+  if(shake>0){camera.x+=(Math.random()-.5)*shake*34;camera.y+=(Math.random()-.5)*shake*34;shake=Math.max(0,shake-dt*2.5)}
+}
+
+/* ===== DRAW WORLD ===== */
+function drawWorld(){
+  ctx.fillStyle="#5c94fc"; // mario sky blue default under
+  ctx.fillRect(0,0,WORLD.width,WORLD.height);
+
+  const step=72;
+  for(let x=Math.floor(camera.x/step)*step;x<camera.x+W+step*2;x+=step){
+    for(let y=Math.floor(camera.y/step)*step;y<camera.y+H+step*2;y+=step){
+      if(x<0||y<0||x>WORLD.width||y>WORLD.height)continue;
+      const b=getBiome(x+36,y+36);
+      if(b==="grass"){const n=Math.sin(x*.014)*Math.cos(y*.012);ctx.fillStyle=n>.15?"#00b800":n<-.2?"#008800":"#00a800"}
+      else if(b==="forest") ctx.fillStyle="#007000";
+      else if(b==="swamp") ctx.fillStyle=((x+y)/72)%2?"#2d5a3a":"#1e4a2e";
+      else if(b==="desert"){const n=Math.sin(x*.02)+Math.cos(y*.018);ctx.fillStyle=n>.1?"#f8d878":"#e8c060"}
+      else if(b==="snow") ctx.fillStyle="#f0f8ff";
+      else if(b==="crystal") ctx.fillStyle="#3a2a6a";
+      else if(b==="dungeon") ctx.fillStyle=((x+y)/72)%2?"#2a2a2a":"#1a1a1a";
+      ctx.fillRect(x,y,step,step);
+    }
+  }
+
+  // river mario style
+  const wave=Math.sin(time*1.8)*14;
+  ctx.fillStyle="#3cbcfc";
+  ctx.beginPath();
+  ctx.moveTo(2400+wave,0);ctx.bezierCurveTo(2100,800,2800,1400,2300+wave*.5,2200);
+  ctx.bezierCurveTo(1900,3000,2600,3600,2200+wave,WORLD.height);
+  ctx.lineTo(2700-wave,WORLD.height);ctx.bezierCurveTo(3000,3500,2600,2900,2800-wave*.4,2200);
+  ctx.bezierCurveTo(3200,1400,2600,800,3000-wave,0);ctx.closePath();ctx.fill();
+  // water shine
+  ctx.fillStyle="rgba(255,255,255,.25)";
+  ctx.beginPath();
+  ctx.moveTo(2500+wave*.3,0);ctx.bezierCurveTo(2300,800,2850,1400,2450,2200);
+  ctx.bezierCurveTo(2150,3000,2700,3500,2400,WORLD.height);ctx.lineTo(2550,WORLD.height);
+  ctx.bezierCurveTo(2800,3400,2600,2900,2650,2200);ctx.bezierCurveTo(3000,1400,2700,800,2800,0);ctx.closePath();ctx.fill();
+
+  // village
+  ctx.fillStyle="#c84c0c";
+  ctx.beginPath();ctx.roundRect(720,1220,560,560,0);ctx.fill();
+  ctx.fillStyle="#fc9838";ctx.fillRect(960,1740,100,480);
+  drawHouse(800,1320);drawHouse(1080,1320);drawHouse(940,1580);
+
+  // Dungeon
+  ctx.fillStyle="#000";ctx.fillRect(4050,3050,1500,1300);
+  ctx.fillStyle="#1a1a1a";
+  for(let x=4100;x<5500;x+=64) for(let y=3100;y<4300;y+=64){
+    ctx.fillStyle=((x+y)/64)%2?"#222":"#181818";ctx.fillRect(x,y,64,64);
+  }
+  // walls
+  ctx.fillStyle="#0a0a0a";
+  ctx.fillRect(4050,3050,1500,60);ctx.fillRect(4050,4290,1500,60);
+  ctx.fillRect(4050,3050,60,1300);ctx.fillRect(5490,3050,60,1300);
+  // pillars
+  [[4300,3400],[4700,3400],[5100,3400],[4300,3800],[4700,3800],[5100,3800],[4300,4150],[5100,4150]].forEach(([px,py])=>{
+    ctx.fillStyle="#111";ctx.fillRect(px-26,py-26,52,52);
+    ctx.fillStyle="#2a2a2a";ctx.fillRect(px-18,py-18,36,36);
+    const g=.45+Math.sin(time*5+px)*.25;
+    ctx.fillStyle=`rgba(255,100,0,${g})`;ctx.beginPath();ctx.arc(px,py-36,22,0,7);ctx.fill();
+    ctx.fillStyle=`rgba(255,200,50,${g*.8})`;ctx.beginPath();ctx.arc(px,py-36,11,0,7);ctx.fill();
+  });
+  // portal
+  const px=4120,py=3600,pulse=.5+Math.sin(time*3)*.3;
+  ctx.fillStyle=`rgba(180,0,255,${.25+pulse*.2})`;ctx.beginPath();ctx.ellipse(px+50,py+100,100,130,0,0,7);ctx.fill();
+  ctx.fillStyle="#100020";ctx.fillRect(px,py,100,200);
+  ctx.strokeStyle=`rgba(255,100,255,${.8+pulse*.2})`;ctx.lineWidth=6;ctx.beginPath();ctx.ellipse(px+50,py+100,40,85,0,0,7);ctx.stroke();
+  ctx.strokeStyle=`rgba(255,200,255,${.6+pulse*.3})`;ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(px+50,py+100,25,65,0,0,7);ctx.stroke();
+  ctx.fillStyle="#f0f";ctx.font="bold 14px 'Press Start 2P'";ctx.textAlign="center";
+  ctx.fillText("DUNGEON",px+50,py-20);
+
+  // decorations
+  for(const d of deco){
+    if(d.x<camera.x-50||d.x>camera.x+W+50||d.y<camera.y-50||d.y>camera.y+H+50)continue;
+    if(d.type==="cactus"){
+      ctx.fillStyle="#00a800";ctx.fillRect(d.x-7,d.y-d.h,14,d.h);
+      ctx.strokeStyle="#000";ctx.lineWidth=3;ctx.strokeRect(d.x-7,d.y-d.h,14,d.h);
+      ctx.fillStyle="#00a800";ctx.fillRect(d.x-20,d.y-d.h*.65,14,10);ctx.fillRect(d.x+6,d.y-d.h*.5,14,10);
+      ctx.strokeRect(d.x-20,d.y-d.h*.65,14,10);ctx.strokeRect(d.x+6,d.y-d.h*.5,14,10);
+    } else if(d.type==="mushroom"){
+      ctx.fillStyle="#fff";ctx.fillRect(d.x-4,d.y-d.s,8,d.s);
+      ctx.strokeStyle="#000";ctx.lineWidth=3;ctx.strokeRect(d.x-4,d.y-d.s,8,d.s);
+      ctx.fillStyle="#e52521";ctx.beginPath();ctx.ellipse(d.x,d.y-d.s,d.s*1.1,d.s*.7,0,0,7);ctx.fill();
+      ctx.stroke();ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(d.x-6,d.y-d.s-4,4,0,7);ctx.arc(d.x+5,d.y-d.s-2,3,0,7);ctx.fill();
+    } else if(d.type==="crystal"){
+      const c=d.c>.5?"#a0f":"#0ff";
+      ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(d.x,d.y-d.s);ctx.lineTo(d.x+d.s*.5,d.y);ctx.lineTo(d.x,d.y+d.s*.35);ctx.lineTo(d.x-d.s*.5,d.y);ctx.closePath();ctx.fill();
+      ctx.strokeStyle="#000";ctx.lineWidth=3;ctx.stroke();
+      ctx.fillStyle="#fff8";ctx.beginPath();ctx.moveTo(d.x,d.y-d.s);ctx.lineTo(d.x+d.s*.22,d.y-d.s*.3);ctx.lineTo(d.x,d.y);ctx.closePath();ctx.fill();
+    }
+  }
+
+  // trees
+  for(const t of trees){
+    if(t.x<camera.x-70||t.x>camera.x+W+70||t.y<camera.y-70||t.y>camera.y+H+70)continue;
+    const sway=Math.sin(time*1.3+t.sway)*3;
+    ctx.fillStyle="#0006";ctx.beginPath();ctx.ellipse(t.x+4,t.y+t.size*1.5,t.size,t.size*.35,0,0,7);ctx.fill();
+    if(t.biome==="snow"){
+      ctx.fillStyle="#8b5a2b";ctx.fillRect(t.x-6,t.y,12,t.size*1.5);
+      ctx.strokeStyle="#000";ctx.lineWidth=3;ctx.strokeRect(t.x-6,t.y,12,t.size*1.5);
+      ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(t.x+sway,t.y-4,t.size*1.1,0,7);ctx.fill();ctx.stroke();
+      ctx.fillStyle="#f0f8ff";ctx.beginPath();ctx.arc(t.x-8+sway,t.y-12,t.size*.7,0,7);ctx.fill();
+    } else {
+      ctx.fillStyle="#8b5a2b";ctx.fillRect(t.x-6,t.y,12,t.size*1.55);
+      ctx.strokeStyle="#000";ctx.lineWidth=3;ctx.strokeRect(t.x-6,t.y,12,t.size*1.55);
+      ctx.fillStyle=t.biome==="swamp"?"#006600":"#00a800";
+      ctx.beginPath();ctx.arc(t.x+sway,t.y-4,t.size*1.15,0,7);ctx.fill();ctx.stroke();
+      ctx.fillStyle=t.biome==="swamp"?"#008800":"#00d000";
+      ctx.beginPath();ctx.arc(t.x-10+sway,t.y-12,t.size*.7,0,7);ctx.fill();
+      ctx.beginPath();ctx.arc(t.x+11+sway,t.y-8,t.size*.55,0,7);ctx.fill();
+    }
+  }
+
+  // rocks
+  for(const r of rocks){
+    if(r.x<camera.x-50||r.x>camera.x+W+50||r.y<camera.y-50||r.y>camera.y+H+50)continue;
+    ctx.fillStyle="#0005";ctx.beginPath();ctx.ellipse(r.x+3,r.y+6,r.size*1.2,r.size*.5,0,0,7);ctx.fill();
+    ctx.fillStyle=r.biome==="desert"?"#c4a060":r.biome==="snow"?"#d0d8e0":"#787878";
+    ctx.beginPath();ctx.arc(r.x,r.y,r.size,0,7);ctx.fill();
+    ctx.strokeStyle="#000";ctx.lineWidth=3;ctx.stroke();
+    ctx.fillStyle=r.biome==="desert"?"#e0c080":r.biome==="snow"?"#fff":"#a0a0a0";
+    ctx.beginPath();ctx.arc(r.x-r.size*.3,r.y-r.size*.25,r.size*.4,0,7);ctx.fill();
+  }
+}
+
+function drawHouse(x,y){
+  // Mario style house
+  ctx.fillStyle="#000";ctx.fillRect(x+4,y+4,150,120);
+  ctx.fillStyle="#fc9838";ctx.fillRect(x,y,150,115);
+  ctx.strokeStyle="#000";ctx.lineWidth=4;ctx.strokeRect(x,y,150,115);
+  // roof
+  ctx.fillStyle="#e52521";
+  ctx.beginPath();ctx.moveTo(x-15,y);ctx.lineTo(x+75,y-55);ctx.lineTo(x+165,y);ctx.closePath();ctx.fill();
+  ctx.stroke();
+  // door
+  ctx.fillStyle="#8b5a2b";ctx.fillRect(x+55,y+50,40,65);
+  ctx.strokeRect(x+55,y+50,40,65);
+  // windows
+  ctx.fillStyle="#5c94fc";ctx.fillRect(x+15,y+25,30,30);ctx.fillRect(x+105,y+25,30,30);
+  ctx.strokeRect(x+15,y+25,30,30);ctx.strokeRect(x+105,y+25,30,30);
+}
+
+/* ===== NPC MARIO STYLE ===== */
+function drawNPC(){
+  const bob=Math.sin(time*2.5)*2;
+  // shadow
+  ctx.fillStyle="#0005";ctx.beginPath();ctx.ellipse(npc.x,npc.y+28,22,9,0,0,7);ctx.fill();
+  // robe
+  ctx.fillStyle="#8000ff";
+  ctx.beginPath();ctx.moveTo(npc.x-22,npc.y+24+bob);ctx.lineTo(npc.x-15,npc.y-10+bob);ctx.lineTo(npc.x+15,npc.y-10+bob);ctx.lineTo(npc.x+22,npc.y+24+bob);ctx.closePath();ctx.fill();
+  ctx.strokeStyle="#000";ctx.lineWidth=4;ctx.stroke();
+  // body
+  ctx.fillStyle="#a040ff";ctx.fillRect(npc.x-14,npc.y-18+bob,28,36);
+  ctx.strokeRect(npc.x-14,npc.y-18+bob,28,36);
+  // head
+  ctx.fillStyle="#fecc99";ctx.beginPath();ctx.arc(npc.x,npc.y-28+bob,14,0,7);ctx.fill();ctx.stroke();
+  // beard
+  ctx.fillStyle="#fff";ctx.beginPath();ctx.moveTo(npc.x-10,npc.y-22+bob);ctx.quadraticCurveTo(npc.x,npc.y-5+bob,npc.x+10,npc.y-22+bob);ctx.fill();ctx.stroke();
+  // hat
+  ctx.fillStyle="#400080";ctx.beginPath();ctx.moveTo(npc.x-18,npc.y-30+bob);ctx.lineTo(npc.x,npc.y-60+bob);ctx.lineTo(npc.x+18,npc.y-30+bob);ctx.closePath();ctx.fill();ctx.stroke();
+  ctx.fillStyle="#fc0";ctx.fillRect(npc.x-16,npc.y-33+bob,32,6);ctx.strokeRect(npc.x-16,npc.y-33+bob,32,6);
+  // staff
+  ctx.strokeStyle="#8b5a2b";ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(npc.x+24,npc.y+22+bob);ctx.lineTo(npc.x+30,npc.y-55+bob);ctx.stroke();
+  ctx.fillStyle="#f0f";ctx.beginPath();ctx.arc(npc.x+30,npc.y-60+bob,10,0,7);ctx.fill();
+  ctx.strokeStyle="#000";ctx.lineWidth=3;ctx.stroke();
+  // name
+  ctx.fillStyle="#000";ctx.fillRect(npc.x-40,npc.y-78+bob,80,16);
+  ctx.fillStyle="#fc0";ctx.font="bold 10px 'Press Start 2P'";ctx.textAlign="center";ctx.fillText(npc.name,npc.x,npc.y-66+bob);
+}
+
+/* ===== ENEMIES MARIO STYLE ===== */
+function drawEnemies(){
+  for(const e of enemies){
+    if(e.hp<=0)continue;
+    if(e.x<camera.x-100||e.x>camera.x+W+100||e.y<camera.y-100||e.y>camera.y+H+100)continue;
+    const flash=e.hitFlash>0;
+    ctx.fillStyle="#0005";ctx.beginPath();ctx.ellipse(e.x,e.y+e.radius*.85,e.radius*1.15,e.radius*.42,0,0,7);ctx.fill();
+
+    if(e.boss){
+      // simplified boss shapes with thick outline
+      let bodyCol="#8000ff";
+      if(e.type==="Ironwood") bodyCol=flash?"#c80":"#840";
+      else if(e.type==="Treant") bodyCol=flash?"#0c0":"#060";
+      else if(e.type==="Hydra") bodyCol=flash?"#0f0":"#080";
+      else if(e.type==="SandKing") bodyCol=flash?"#fc0":"#c80";
+      else if(e.type==="Frost") bodyCol=flash?"#aff":"#48c";
+      else if(e.type==="Crystal") bodyCol=flash?"#f0f":"#80f";
+      else bodyCol=flash?"#f0f":"#80f"; // AetherLord
+
+      ctx.fillStyle=bodyCol;
+      ctx.beginPath();ctx.arc(e.x,e.y,e.radius,0,7);ctx.fill();
+      ctx.strokeStyle="#000";ctx.lineWidth=5;ctx.stroke();
+
+      // eyes
+      ctx.fillStyle="#f00";
+      ctx.beginPath();ctx.arc(e.x-14,e.y-8,8,0,7);ctx.arc(e.x+14,e.y-8,8,0,7);ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle="#fff";
+      ctx.beginPath();ctx.arc(e.x-14,e.y-8,3,0,7);ctx.arc(e.x+14,e.y-8,3,0,7);ctx.fill();
+
+      // crown for some
+      if(e.type==="AetherLord"||e.type==="SandKing"||e.type==="Frost"){
+        ctx.fillStyle="#fc0";
+        ctx.beginPath();
+        ctx.moveTo(e.x-30,e.y-e.radius+5);
+        ctx.lineTo(e.x-18,e.y-e.radius-20);
+        ctx.lineTo(e.x-6,e.y-e.radius+2);
+        ctx.lineTo(e.x,e.y-e.radius-25);
+        ctx.lineTo(e.x+6,e.y-e.radius+2);
+        ctx.lineTo(e.x+18,e.y-e.radius-20);
+        ctx.lineTo(e.x+30,e.y-e.radius+5);
+        ctx.closePath();ctx.fill();ctx.stroke();
+      }
+
+      // name + bar
+      const barW=e.type==="AetherLord"?140:110;
+      ctx.fillStyle="#000";ctx.fillRect(e.x-barW/2-2,e.y-e.radius-32,barW+4,12);
+      ctx.fillStyle=bodyCol;ctx.fillRect(e.x-barW/2,e.y-e.radius-30,barW*Math.max(0,e.hp/e.maxHp),8);
+      ctx.fillStyle="#fff";ctx.font="bold 9px 'Press Start 2P'";ctx.textAlign="center";
+      ctx.fillText(e.type.toUpperCase(),e.x,e.y-e.radius-38);
+
+    } else {
+      // normal enemies - mario style
+      if(e.type==="Slime"){
+        ctx.fillStyle=flash?"#8f8":"#0c0";
+        ctx.beginPath();ctx.ellipse(e.x,e.y+4,e.radius*1.2,e.radius*.95,0,0,7);ctx.fill();
+        ctx.strokeStyle="#000";ctx.lineWidth=4;ctx.stroke();
+        ctx.fillStyle="#000";ctx.beginPath();ctx.arc(e.x-8,e.y-2,5,0,7);ctx.arc(e.x+8,e.y-2,5,0,7);ctx.fill();
+        ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(e.x-7,e.y-3,2,0,7);ctx.arc(e.x+9,e.y-3,2,0,7);ctx.fill();
+      } else if(e.type==="Goblin"){
+        ctx.fillStyle=flash?"#cf0":"#080";
+        ctx.beginPath();ctx.arc(e.x,e.y,e.radius,0,7);ctx.fill();
+        ctx.strokeStyle="#000";ctx.lineWidth=4;ctx.stroke();
+        // ears
+        ctx.fillStyle=flash?"#cf0":"#060";
+        ctx.beginPath();ctx.moveTo(e.x-12,e.y-8);ctx.lineTo(e.x-24,e.y-22);ctx.lineTo(e.x-6,e.y-12);ctx.closePath();ctx.fill();ctx.stroke();
+        ctx.beginPath();ctx.moveTo(e.x+12,e.y-8);ctx.lineTo(e.x+24,e.y-22);ctx.lineTo(e.x+6,e.y-12);ctx.closePath();ctx.fill();ctx.stroke();
+        ctx.fillStyle="#fc0";ctx.beginPath();ctx.arc(e.x-6,e.y-3,5,0,7);ctx.arc(e.x+6,e.y-3,5,0,7);ctx.fill();
+        ctx.fillStyle="#000";ctx.beginPath();ctx.arc(e.x-6,e.y-3,2.5,0,7);ctx.arc(e.x+6,e.y-3,2.5,0,7);ctx.fill();
+      } else if(e.type==="Wolf"){
+        ctx.fillStyle=flash?"#ccc":"#555";
+        ctx.beginPath();ctx.arc(e.x,e.y,e.radius,0,7);ctx.fill();
+        ctx.strokeStyle="#000";ctx.lineWidth=4;ctx.stroke();
+        ctx.fillStyle=flash?"#ddd":"#777";ctx.beginPath();ctx.ellipse(e.x+14,e.y+2,12,8,0,0,7);ctx.fill();ctx.stroke();
+        ctx.fillStyle="#f44";ctx.beginPath();ctx.arc(e.x-5,e.y-5,4.5,0,7);ctx.arc(e.x+8,e.y-5,4.5,0,7);ctx.fill();
+      } else { // Skeleton
+        ctx.fillStyle=flash?"#fff":"#eee";
+        ctx.beginPath();ctx.arc(e.x,e.y,e.radius,0,7);ctx.fill();
+        ctx.strokeStyle="#000";ctx.lineWidth=4;ctx.stroke();
+        ctx.fillStyle="#f00";ctx.beginPath();ctx.arc(e.x-7,e.y-4,5,0,7);ctx.arc(e.x+7,e.y-4,5,0,7);ctx.fill();
+        ctx.fillStyle="#f88";ctx.beginPath();ctx.arc(e.x-7,e.y-4,2,0,7);ctx.arc(e.x+7,e.y-4,2,0,7);ctx.fill();
+      }
+      // hp bar
+      const barW=48;
+      ctx.fillStyle="#000";ctx.fillRect(e.x-barW/2-2,e.y-e.radius-16,barW+4,10);
+      ctx.fillStyle="#e52521";ctx.fillRect(e.x-barW/2,e.y-e.radius-14,barW*Math.max(0,e.hp/e.maxHp),6);
+    }
+  }
+}
+
+/* ===== PLAYER MARIO STYLE ===== */
+function drawPlayer(){
+  for(const t of trails){
+    ctx.globalAlpha=Math.max(0,t.life*2.5);
+    ctx.fillStyle="#5c94fc";
+    ctx.beginPath();ctx.arc(t.x,t.y,16,0,7);ctx.fill();
+  }
+  ctx.globalAlpha=1;
+
+  const bob=Math.sin(time*9)*1.5*(Math.abs(player.facingX)+Math.abs(player.facingY)>.1?1:.25);
+
+  // shadow
+  ctx.fillStyle="#0006";ctx.beginPath();ctx.ellipse(player.x,player.y+24,24,10,0,0,7);ctx.fill();
+
+  // cape / overalls style
+  ctx.fillStyle="#e52521"; // red like Mario
+  ctx.beginPath();
+  ctx.moveTo(player.x-16,player.y-6+bob);
+  ctx.quadraticCurveTo(player.x-30,player.y+12+bob,player.x-20,player.y+26+bob);
+  ctx.lineTo(player.x+20,player.y+26+bob);
+  ctx.quadraticCurveTo(player.x+30,player.y+12+bob,player.x+16,player.y-6+bob);
+  ctx.closePath();ctx.fill();
+  ctx.strokeStyle="#000";ctx.lineWidth=4;ctx.stroke();
+
+  // body (blue overalls)
+  ctx.fillStyle="#5c94fc";
+  ctx.beginPath();ctx.arc(player.x,player.y+bob,19,0,7);ctx.fill();
+  ctx.stroke();
+
+  // buttons
+  ctx.fillStyle="#fc0";
+  ctx.beginPath();ctx.arc(player.x-5,player.y+2+bob,3.5,0,7);ctx.arc(player.x+5,player.y+2+bob,3.5,0,7);ctx.fill();
+  ctx.strokeStyle="#000";ctx.lineWidth=2;ctx.stroke();
+
+  // head
+  ctx.fillStyle="#fecc99";
+  ctx.beginPath();ctx.arc(player.x,player.y-18+bob,14,0,7);ctx.fill();
+  ctx.strokeStyle="#000";ctx.lineWidth=4;ctx.stroke();
+
+  // hat (red)
+  ctx.fillStyle="#e52521";
+  ctx.beginPath();
+  ctx.arc(player.x,player.y-22+bob,14,Math.PI,Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(player.x-16,player.y-22+bob);
+  ctx.lineTo(player.x+16,player.y-22+bob);
+  ctx.lineTo(player.x+18,player.y-18+bob);
+  ctx.lineTo(player.x-18,player.y-18+bob);
+  ctx.closePath();ctx.fill();
+  ctx.strokeStyle="#000";ctx.lineWidth=3;ctx.stroke();
+
+  // hat emblem
+  ctx.fillStyle="#fff";
+  ctx.beginPath();ctx.arc(player.x,player.y-26+bob,5,0,7);ctx.fill();
+  ctx.fillStyle="#e52521";
+  ctx.font="bold 8px 'Press Start 2P'";ctx.textAlign="center";
+  ctx.fillText("A",player.x,player.y-23+bob);
+
+  // eyes
+  ctx.fillStyle="#000";
+  ctx.beginPath();ctx.arc(player.x-5,player.y-17+bob,2.8,0,7);ctx.arc(player.x+5,player.y-17+bob,2.8,0,7);ctx.fill();
+
+  // mustache hint
+  ctx.fillStyle="#5c3317";
+  ctx.beginPath();ctx.ellipse(player.x,player.y-12+bob,8,3,0,0,7);ctx.fill();
+
+  // sword
+  const sx=player.x+player.facingX*34,sy=player.y+player.facingY*34+bob;
+  ctx.strokeStyle="#fff";ctx.lineWidth=6;ctx.lineCap="round";
+  ctx.beginPath();ctx.moveTo(player.x+player.facingX*10,player.y+bob);ctx.lineTo(sx,sy);ctx.stroke();
+  ctx.strokeStyle="#000";ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(player.x+player.facingX*10,player.y+bob);ctx.lineTo(sx,sy);ctx.stroke();
+  ctx.fillStyle="#fc0";ctx.beginPath();ctx.arc(player.x+player.facingX*12,player.y+bob,5,0,7);ctx.fill();
+  ctx.strokeStyle="#000";ctx.lineWidth=2;ctx.stroke();
+
+  // slash
+  if(player.slashTimer>0){
+    const a=player.slashTimer/.2;
+    const ang=Math.atan2(player.facingY,player.facingX);
+    ctx.strokeStyle=`rgba(255,255,255,${a})`;ctx.lineWidth=7;
+    ctx.beginPath();ctx.arc(player.x,player.y+bob,58,ang-1.1,ang+1.1);ctx.stroke();
+  }
+}
+
+function drawParticles(){
+  for(const p of particles){
+    const a=Math.max(0,p.life/(p.maxLife||.8));
+    ctx.globalAlpha=a;ctx.fillStyle=p.color;
+    ctx.beginPath();ctx.arc(p.x,p.y,(p.size||3.5)*a,0,7);ctx.fill();
+  }
+  ctx.globalAlpha=1;
+  for(const f of floatingTexts){
+    ctx.globalAlpha=Math.max(0,f.life);
+    ctx.fillStyle=f.color;
+    ctx.font="bold 12px 'Press Start 2P'";ctx.textAlign="center";
+    ctx.fillText(f.text,f.x,f.y);
+  }
+  ctx.globalAlpha=1;
+}
+
+function drawLight(){
+  const b=getBiome(player.x,player.y);
+  if(b==="dungeon"){ctx.fillStyle="rgba(0,0,0,.35)";ctx.fillRect(camera.x,camera.y,W,H)}
+  else if(b==="swamp"){ctx.fillStyle="rgba(0,40,20,.12)";ctx.fillRect(camera.x,camera.y,W,H)}
+  else if(b==="crystal"){ctx.fillStyle="rgba(60,0,100,.12)";ctx.fillRect(camera.x,camera.y,W,H)}
+  else if(b==="snow"){ctx.fillStyle="rgba(200,220,255,.1)";ctx.fillRect(camera.x,camera.y,W,H)}
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  ctx.save();ctx.translate(-camera.x,-camera.y);
+  drawWorld();drawNPC();drawEnemies();drawPlayer();drawParticles();drawLight();
+  ctx.restore();
+}
+
+function updateHUD(){
+  document.getElementById("hp").style.width=Math.max(0,Math.min(100,player.hp/player.maxHp*100))+"%";
+  document.getElementById("hpText").textContent=Math.ceil(player.hp)+"/"+player.maxHp;
+  document.getElementById("level").textContent=player.level;
+  document.getElementById("coins").textContent=player.coins;
+  document.getElementById("xpBar").style.width=player.xp+"%";
+  document.getElementById("invCoins").textContent=player.coins;
+  document.getElementById("potion").textContent=player.potions;
+}
+let msgTimer;
+function showMessage(t){const m=document.getElementById("message");m.textContent=t;m.classList.add("show");clearTimeout(msgTimer);msgTimer=setTimeout(()=>m.classList.remove("show"),2800)}
+function toggleInventory(){if(!running)return;const i=document.getElementById("inventory");i.style.display=i.style.display==="flex"?"none":"flex"}
+function togglePause(){if(!running)return;paused=!paused;document.getElementById("pause").style.display=paused?"flex":"none"}
+
+let last=performance.now();
+function loop(now){
+  const dt=Math.min((now-last)/1000,.033);last=now;time+=dt;
+  if(running&&!paused){updatePlayer(dt);updateEnemies(dt);updateParticles(dt);updateCamera(dt);updateHUD()}
+  draw();requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+if(!localStorage.getItem("aetherSave"))document.getElementById("continueGame").style.opacity=".45";
+</script>
+</body>
+</html>
